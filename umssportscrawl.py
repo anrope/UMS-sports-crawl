@@ -148,7 +148,7 @@ def get_events(school, sport):
 
 def get_db_cursor():
 	"""convenience function for opening a db cursor"""
-	db = MySQLdb.connect(host = 'localhost', user = 'root', passwd = '', db = 'umssportscrawl')
+	db = MySQLdb.connect(host = 'localhost', user = '', passwd = '', db = 'umssportscrawl')
 	return db.cursor()
 
 def save_events(events):
