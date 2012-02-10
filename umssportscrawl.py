@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/home/rking788/bin/python
 
 import requests
 from BeautifulSoup import BeautifulSoup
@@ -6,6 +6,10 @@ import re
 import datetime
 import MySQLdb
 import sys
+
+now = datetime.datetime.now()
+
+TABLENAME = 'SportsEvents_UMFK'
 
 #base urls for the different schools
 baseurl = {
@@ -25,7 +29,10 @@ schoolname = {
 	'umfk': 'University of Maine Fort Kent'}
 
 #abbreviations corresponding to pretty school names
-schoolabbrev = {v: k for k, v in schoolname.iteritems()}
+schoolabbrev = {}
+for k,v in schoolname.iteritems():
+	schoolabbrev[v] = k
+#schoolabbrev = {v:k for k,v in schoolname.iteritems()}
 
 #regexs for fields we're interested in
 gooddata = {
@@ -40,23 +47,41 @@ class Event(object):
 	Event class that performs the necessary manipulation
 	for various fields we're interested in.
 	"""
-	@property
-	def date(self):
+
+	def _get_date(self):
 		return self._date
 
-	@date.setter
-	def date(self, d):
+	def _set_date(self, value):
 		"""date setter turns the date string into a date object"""
-		self._date = datetime.datetime.strptime(d, '%B %d, %Y').date()
+		self._date = datetime.datetime.strptime(value, '%B %d, %Y').date()
 
-	@property
-	def time(self):
+	date = property(_get_date, _set_date)
+#	@property
+#	def date(self):
+#		return self._date
+
+#	@date.setter
+#	def date(self, d):
+#		"""date setter turns the date string into a date object"""
+#		self._date = datetime.datetime.strptime(d, '%B %d, %Y').date()
+
+	def _get_time(self):
 		return self._time
 
-	@time.setter
-	def time(self, t):
+	def _set_time(self, value):
 		"""time setter turns the time string into a time object"""
-		self._time = datetime.datetime.strptime(t, '%H:%M %p').time()
+		self._time = datetime.datetime.strptime(value, '%I:%M %p').time()
+
+	time = property(_get_time, _set_time)
+
+#	@property
+#	def time(self):
+#		return self._time
+
+#	@time.setter
+#	def time(self, t):
+#		"""time setter turns the time string into a time object"""
+#		self._time = datetime.datetime.strptime(t, '%H:%M %p').time()
 
 	@property
 	def datetime(self):
@@ -148,7 +173,7 @@ def get_events(school, sport):
 
 def get_db_cursor():
 	"""convenience function for opening a db cursor"""
-	db = MySQLdb.connect(host = 'localhost', user = 'root', passwd = '', db = 'umssportscrawl')
+	db = MySQLdb.connect(host = 'umainedb.mainelyapps.com', user = 'umaine', passwd = 'fjav77*', db = 'mainelyapps_umaine')
 	return db.cursor()
 
 def save_events(events):
@@ -162,11 +187,11 @@ def save_events(events):
 
 	for ev in events:
 		#check to see if there's already a row for this event
-		cursor.execute('select * from events where dateTime = %s and sport = %s', (ev.datetime, ev.sport))
+		cursor.execute('select * from ' + TABLENAME + ' where dateTime = %s and sport = %s', (ev.datetime, ev.sport))
 		
 		if cursor.fetchone():
 			#if there is an existing row, just update it
-			cursor.execute('''update events set
+			cursor.execute('''update ''' + TABLENAME + ''' set
 				recaplink = %s,
 				result = %s,
 				teamB = %s,
@@ -174,8 +199,11 @@ def save_events(events):
 				where dateTime = %s and sport = %s''', (ev.recap, ev.result, ev.opponent, datetime.datetime.now(), ev.datetime, ev.sport))
 		else:
 			#if there isn't an existing row, insert a new one
-			row = (ev.datetime, ev.home, ev.recap, ev.result, ev.sport, ev.hometeam, ev.opponent, 'yearrange', datetime.datetime.now())
-			cursor.execute('insert into events (dateTime, home, recapLink, result, sport, teamA, teamB, yearRange, modifiedDateTime) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)', row)
+			beginYear = str(now.year)
+			endYear = str(int(beginYear[2:]) + 1)
+			yearRange = beginYear + '-' + endYear
+			row = (ev.datetime, ev.home, ev.recap, ev.result, ev.sport, ev.hometeam, ev.opponent, yearRange, datetime.datetime.now())
+			cursor.execute('insert into ' + TABLENAME + ' (dateTime, home, recapLink, result, sport, teamA, teamB, yearRange, modifiedDateTime) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)', row)
 
 	cursor.close()
 
@@ -185,7 +213,7 @@ def get_todays_sports():
 	return a list of tuples of (school, sport)
 	"""
 	cursor = get_db_cursor()
-	cursor.execute('select teamA, sport from events where date(dateTime) = date(now())')
+	cursor.execute('select teamA, sport from ' + TABLENAME + ' where date(dateTime) = date(now())')
 	rows = cursor.fetchall()
 	cursor.close()
 	return rows
