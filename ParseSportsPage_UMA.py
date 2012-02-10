@@ -7,6 +7,7 @@ import re
 import datetime
 import MySQLdb
 
+DBH = MySQLdb.connect(host="umainedb.mainelyapps.com", user="" , passwd="", db="mainelyapps_umaine")
 CURSOR = DBH.cursor()
 DB_TABLE = 'SportsEvents_UMA'
 
@@ -29,12 +30,14 @@ def parseSport(sport):
 
 	# Get the year range for this schedule
 	yearRange = findYearRange(html)
-
+    if(yearRange == None):
+        return None
+    
 	# Get the html text for the schedule table
 	htmlTableStr = findTableData(html)
 	if not htmlTableStr:
 		print "Error finding the schedule table data for sport(" + sport + ")"
-		return
+		return None
 
 	headingsDict = findHeadingOrder(htmlTableStr)
 
@@ -47,6 +50,9 @@ def parseSport(sport):
 def findYearRange(html):
 	result = re.search('>\s*[^\d]*\s*(?P<beginyear>(\d){4})(-(?P<endyear>(\d){4}))*\s*\S*\s*(Schedule|Season)\s*<', html)
 
+    if(result == None):
+        return None
+    
 	beginyear = result.groupdict()['beginyear']
 	endyear = result.groupdict()['endyear']
 	if(endyear == None):
@@ -303,7 +309,12 @@ def addEvent(gameInfo):
 def getNewEvents():
 	for sport in SPORTSLIST:
 		sched = parseSport(sport)
+
+		if (sched == None):
+			return None
 		for game in sched:
+            if(game == None):
+                continue
 			addEvent(game)
 
 def updateEvent(date, gameInfo):
@@ -345,7 +356,13 @@ def getResults(dates):
 			# parse the sport and look for the date we are looking for
 			sched = parseSport(sport)
 			
+			if(sched == None):
+				return None
+
 			for game in sched:
+                if(game == None):
+                    continue
+                        
 				if(game['Date'] == schedDateFormat):
 					updateEvent(date, game)
 
