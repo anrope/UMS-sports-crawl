@@ -1,4 +1,7 @@
 #!/usr/bin/python
+"""
+Fantastic doctsring
+"""
 
 import argparse
 import sys
